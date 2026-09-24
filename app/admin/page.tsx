@@ -14,8 +14,10 @@ export default function AdminProductsPage() {
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('10'); // Default Stock
   const [category, setCategory] = useState('Oversized Tees');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  // Multiple Images State (Max 5 photos)
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [description, setDescription] = useState('');
 
   // Quick Edit Modal State
@@ -42,59 +44,73 @@ export default function AdminProductsPage() {
     setLoading(false);
   };
 
-  // Image select pannumbodhu preview kaatta
+  // Multiple Image selection and preview handling (Max 5)
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+
+      if (selectedFiles.length > 5) {
+        alert('Maximum 5 photos mattum thaan upload panna mudiyum!');
+        e.target.value = '';
+        return;
+      }
+
+      setImageFiles(selectedFiles);
+      
+      const previews = selectedFiles.map((file) => URL.createObjectURL(file));
+      setImagePreviews(previews);
     }
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !price || !imageFile) {
-      alert('Please fill Title, Price, and Select an Image File!');
+    if (!title || !price || imageFiles.length === 0) {
+      alert('Please fill Title, Price, and Select at least 1 Image File!');
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // 1. Image-a Supabase Storage-ku Upload Pannuvadhu
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `products/${fileName}`;
+      const uploadedUrls: string[] = [];
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, imageFile);
+      // 1. Multiple Images-a Supabase Storage-ku Upload Pannuvadhu
+      for (const file of imageFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `products/${fileName}`;
 
-      if (uploadError) {
-        throw new Error('Image upload failed: ' + uploadError.message);
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw new Error('Image upload failed: ' + uploadError.message);
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrlData.publicUrl);
       }
 
-      // 2. Upload aana Image-odaya Public URL Get Pannuvadhu
-      const { data: publicUrlData } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-
-      const imageUrl = publicUrlData.publicUrl;
-
-      // 3. Slug Generate Pannuvadhu
+      // 2. Slug Generate Pannuvadhu
       const slug = title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)+/g, '');
 
-      // 4. Product Database-la Insert Pannuvadhu (including Stock)
+      // 3. Product Database-la Insert Pannuvadhu
+      // Note: First image is stored in image_url for thumbnail, and full array in image_urls
       const { error: dbError } = await supabase.from('products').insert([
         {
           title,
           price: parseFloat(price),
           stock: parseInt(stock) || 0,
           category,
-          image_url: imageUrl,
+          image_url: uploadedUrls[0], // Primary preview image
+          image_urls: uploadedUrls,    // Array of all 4-5 images
           description,
           slug,
         },
@@ -110,8 +126,8 @@ export default function AdminProductsPage() {
       setTitle('');
       setPrice('');
       setStock('10');
-      setImageFile(null);
-      setImagePreview(null);
+      setImageFiles([]);
+      setImagePreviews([]);
       setDescription('');
       fetchProducts();
     } catch (err: any) {
@@ -133,7 +149,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  // Stock Update Quick Function (Edit & Sold Out)
+  // Stock Update Quick Function
   const handleUpdateStock = async (newStockValue: number) => {
     if (!editingProduct) return;
     setUpdatingStock(true);
@@ -193,7 +209,6 @@ export default function AdminProductsPage() {
                   />
                 </div>
 
-                {/* Stock Count Field */}
                 <div>
                   <label className="text-xs uppercase text-smoke block mb-1 font-bold">
                     Stock *
@@ -210,7 +225,6 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              {/* Updated Category Options */}
               <div>
                 <label className="text-xs uppercase text-smoke block mb-1 font-bold">
                   Category
@@ -227,25 +241,32 @@ export default function AdminProductsPage() {
                 </select>
               </div>
 
-              {/* Direct Photo Upload Input */}
+              {/* Direct Photo Upload Input with Multiple Selection (Max 5) */}
               <div>
                 <label className="text-xs uppercase text-smoke block mb-1 font-bold">
-                  Product Photo Upload *
+                  Product Photos Upload * (Max 5)
                 </label>
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleImageChange}
                   className="w-full bg-void border border-seam rounded p-2 text-sm text-bone file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-bone file:text-void hover:file:bg-smoke cursor-pointer"
                   required
                 />
-                {imagePreview && (
-                  <div className="mt-3 relative w-full h-32 rounded border border-seam overflow-hidden">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
+                
+                {/* Multi-Image Previews Grid */}
+                {imagePreviews.length > 0 && (
+                  <div className="mt-3 grid grid-cols-5 gap-2">
+                    {imagePreviews.map((src, index) => (
+                      <div key={index} className="relative w-full h-16 rounded border border-seam overflow-hidden">
+                        <img
+                          src={src}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -312,7 +333,6 @@ export default function AdminProductsPage() {
                           ₹{p.price} | {p.category}
                         </p>
                         
-                        {/* Dynamic Stock Display Badge */}
                         <p className="text-xs mt-1">
                           {(p.stock ?? 0) > 0 ? (
                             <span className="text-green-400 font-mono">Stock: {p.stock}</span>
@@ -324,7 +344,6 @@ export default function AdminProductsPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {/* Edit Stock Button */}
                       <button
                         onClick={() => {
                           setEditingProduct(p);
@@ -335,7 +354,6 @@ export default function AdminProductsPage() {
                         Edit
                       </button>
 
-                      {/* Delete Button */}
                       <button
                         onClick={() => handleDeleteProduct(p.id)}
                         className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white text-xs font-bold px-3 py-2 rounded transition"
