@@ -1,17 +1,6 @@
-/** @type {import('next').NextPageOptions} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**.supabase.co', // Supabase Storage URLs
-      },
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
-  },
+  /* config options here */
 };
 
-export default nextConfig;
+module.exports = nextConfig;
