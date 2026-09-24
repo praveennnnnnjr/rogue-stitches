@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Script from 'next/script';
 
 declare global {
@@ -31,6 +30,13 @@ export default function CheckoutPage() {
     setCartItems(items);
   }, []);
 
+  // Helper function: Multiple URLs (comma-separated or single string) irundhalum 1st image URL-a extract pannum
+  const getCheckoutImage = (imageUrl: string) => {
+    if (!imageUrl) return '';
+    const urls = imageUrl.split(',').map((url) => url.trim());
+    return urls[0] || '';
+  };
+
   const subtotal = cartItems.reduce(
     (acc, item) => acc + (Number(item.price) || 0) * item.quantity,
     0
@@ -54,14 +60,13 @@ export default function CheckoutPage() {
 
     // Razorpay Options Setup
     const options = {
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_YourKeyHere', // Replace with your Razorpay Key ID
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_YourKeyHere',
       amount: subtotal * 100, // Amount in paise (₹598 = 59800)
       currency: 'INR',
       name: 'Rogue Stitches',
       description: 'Order Payment',
-      image: '/logo.png', // Optional: Your store logo URL
+      image: '/logo.png',
       handler: function (response: any) {
-        // Payment Successful Callback
         console.log('Payment Successful:', response);
         localStorage.removeItem('cart');
         window.dispatchEvent(new Event('cartUpdated'));
@@ -119,7 +124,7 @@ export default function CheckoutPage() {
 
           <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            {/* Left Column: Shipping Details Only */}
+            {/* Left Column: Shipping Details */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-panel border border-seam p-6 rounded-lg space-y-4">
                 <h2 className="text-sm font-mono uppercase font-bold text-white border-b border-seam pb-2">
@@ -175,7 +180,7 @@ export default function CheckoutPage() {
                     rows={3}
                     value={formData.address}
                     onChange={handleInputChange}
-                    className="w-full bg-void border border-seam rounded p-3 text-white focus:outline-none focus:border-bone"
+                    className="w-full bg-void border border-seam rounded p-3 text-white focus:outline-none focus:border-bone resize-none"
                     placeholder="House No, Street, Landmark"
                   />
                 </div>
@@ -217,20 +222,34 @@ export default function CheckoutPage() {
               </h2>
 
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                {cartItems.map((item, idx) => (
-                  <div key={idx} className="flex gap-3 items-center">
-                    <div className="relative w-12 h-12 bg-void rounded overflow-hidden flex-shrink-0">
-                      {item.image_url && (
-                        <Image src={item.image_url} alt={item.title} fill className="object-cover" />
-                      )}
+                {cartItems.map((item, idx) => {
+                  const itemImg = getCheckoutImage(item.image_url);
+
+                  return (
+                    <div key={idx} className="flex gap-3 items-center">
+                      <div className="w-12 h-12 bg-void rounded border border-seam overflow-hidden flex-shrink-0">
+                        {itemImg ? (
+                          <img
+                            src={itemImg}
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[8px] text-smoke">
+                            No Img
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 text-xs font-mono">
+                        <p className="text-white truncate font-bold">{item.title}</p>
+                        <p className="text-smoke">Size: {item.size} | Qty: {item.quantity}</p>
+                      </div>
+                      <p className="text-xs font-mono font-bold text-bone">
+                        ₹{(Number(item.price) || 0) * item.quantity}
+                      </p>
                     </div>
-                    <div className="flex-1 text-xs font-mono">
-                      <p className="text-white truncate font-bold">{item.title}</p>
-                      <p className="text-smoke">Size: {item.size} | Qty: {item.quantity}</p>
-                    </div>
-                    <p className="text-xs font-mono font-bold text-bone">₹{item.price * item.quantity}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <hr className="border-seam" />
@@ -253,7 +272,7 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-white hover:bg-zinc-200 disabled:opacity-50 text-black font-mono text-xs font-bold py-4 uppercase tracking-wider rounded transition mt-4"
+                className="w-full bg-white hover:bg-zinc-200 disabled:opacity-50 text-black font-mono text-xs font-bold py-4 uppercase tracking-wider rounded transition mt-4 cursor-pointer"
               >
                 {loading ? 'OPENING RAZORPAY...' : 'PLACE ORDER'}
               </button>
