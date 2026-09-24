@@ -9,7 +9,7 @@ export default function NewArrivalsPage() {
           New Arrivals
         </h1>
       </div>
-      <ProductGrid onlyNew />
+      <ProductGrid />
     </div>
   );
 }
