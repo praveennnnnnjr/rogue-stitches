@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<any[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     loadCart();
@@ -17,7 +19,6 @@ export default function CartPage() {
     setCartItems(storedCart);
   };
 
-  // Helper Function: Extracts the 1st valid image URL
   const getCartImage = (imageUrl: string) => {
     if (!imageUrl) return '';
     const urls = imageUrl.split(',').map((url) => url.trim());
@@ -42,6 +43,11 @@ export default function CartPage() {
     (acc, item) => acc + (item.price || 0) * (item.quantity || 1),
     0
   );
+
+  const handleCheckout = () => {
+    if (cartItems.length === 0) return;
+    router.push('/checkout');
+  };
 
   return (
     <div className="min-h-screen bg-void text-bone p-6 md:p-12">
@@ -157,7 +163,10 @@ export default function CartPage() {
                 <span>₹{subtotal}</span>
               </div>
 
-              <button className="w-full bg-white hover:bg-zinc-200 text-black font-mono text-xs font-bold py-4 rounded uppercase tracking-widest transition mt-2">
+              <button
+                onClick={handleCheckout}
+                className="w-full bg-white hover:bg-zinc-200 text-black font-mono text-xs font-bold py-4 rounded uppercase tracking-widest transition mt-2 cursor-pointer"
+              >
                 PROCEED TO CHECKOUT
               </button>
             </div>
