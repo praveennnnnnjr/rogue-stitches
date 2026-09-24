@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import Image from 'next/image';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -56,7 +55,7 @@ export default function ProductDetailPage() {
       if (foundProduct) {
         setProduct(foundProduct);
 
-        // Parse Multiple Image URLs (handles array, comma-separated string, or single string)
+        // Parse Multiple Image URLs
         let extractedImages: string[] = [];
 
         if (Array.isArray(foundProduct.image_urls) && foundProduct.image_urls.length > 0) {
@@ -81,10 +80,8 @@ export default function ProductDetailPage() {
     if (!product) return;
     setAdding(true);
 
-    // Get current cart items from LocalStorage
     const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
 
-    // Check if product with same ID and Size already exists
     const existingIndex = existingCart.findIndex(
       (item: any) => item.id === product.id && item.size === selectedSize
     );
@@ -104,15 +101,10 @@ export default function ProductDetailPage() {
       });
     }
 
-    // Save back to LocalStorage
     localStorage.setItem('cart', JSON.stringify(existingCart));
-
-    // Dispatch custom event so Cart page detects update immediately
     window.dispatchEvent(new Event('cartUpdated'));
 
     setAdding(false);
-
-    // Redirect to Cart page
     router.push('/cart');
   };
 
@@ -145,16 +137,14 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-void text-bone p-6 md:p-12">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
         
-        {/* Left Side: Product Gallery (Main Image + Thumbnails) */}
+        {/* Left Side: Product Gallery */}
         <div className="flex flex-col space-y-4">
           <div className="relative aspect-square w-full bg-panel rounded-lg overflow-hidden border border-seam">
             {selectedImage ? (
-              <Image
+              <img
                 src={selectedImage}
                 alt={product.title}
-                fill
-                className="object-cover"
-                unoptimized
+                className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-smoke font-mono">
@@ -176,12 +166,10 @@ export default function ProductDetailPage() {
                       : 'border-seam opacity-60 hover:opacity-100'
                   }`}
                 >
-                  <Image
+                  <img
                     src={url}
                     alt={`${product.title} view ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    unoptimized
+                    className="w-full h-full object-cover"
                   />
                 </button>
               ))}
@@ -259,7 +247,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* Add to Cart Button ONLY */}
+          {/* Add to Cart Button */}
           <div className="pt-4">
             <button
               disabled={isSoldOut || adding}
