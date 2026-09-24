@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
-export default function CategoryPage({ params }: { params: { category?: string } }) {
+export default function CategoryPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -28,15 +28,11 @@ export default function CategoryPage({ params }: { params: { category?: string }
     }
   };
 
-  // Helper Function: Multiple image URLs-nalli modala image-na correct-agi extract maadutthe
-  const getFirstImage = (product: any) => {
-    if (Array.isArray(product.image_urls) && product.image_urls.length > 0) {
-      return product.image_urls[0];
-    }
-    if (product.image_url) {
-      return product.image_url.split(',')[0].trim();
-    }
-    return '';
+  // Helper Function: Multiple images comma-separated ah irundhalum 1st image-a extract pannum
+  const getFirstImage = (imageUrlString: string) => {
+    if (!imageUrlString) return '';
+    const images = imageUrlString.split(',').map((img) => img.trim());
+    return images[0] || '';
   };
 
   if (loading) {
@@ -50,24 +46,27 @@ export default function CategoryPage({ params }: { params: { category?: string }
   return (
     <div className="min-h-screen bg-void text-bone p-6 md:p-12">
       <div className="max-w-7xl mx-auto">
+        <p className="text-xs font-mono uppercase text-smoke tracking-widest mb-1">
+          CATEGORY
+        </p>
         <h1 className="text-3xl font-bold uppercase tracking-wider mb-8 text-white">
-          Products
+          TRACK PANT
         </h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map((product) => {
-            const mainImage = getFirstImage(product);
+            const firstImage = getFirstImage(product.image_url);
 
             return (
               <div
                 key={product.id}
                 className="bg-panel border border-seam rounded-lg overflow-hidden flex flex-col justify-between"
               >
-                {/* Product Image Container */}
+                {/* Product 1st Image Display */}
                 <div className="relative aspect-square w-full bg-void overflow-hidden">
-                  {mainImage ? (
+                  {firstImage ? (
                     <img
-                      src={mainImage}
+                      src={firstImage}
                       alt={product.title}
                       className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                     />
