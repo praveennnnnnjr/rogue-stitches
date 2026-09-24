@@ -8,7 +8,7 @@ import Image from 'next/image';
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
-  
+
   const rawParam = params?.slug as string;
   const paramValue = rawParam ? decodeURIComponent(rawParam) : '';
 
@@ -17,6 +17,10 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [adding, setAdding] = useState<boolean>(false);
+
+  // Multiple Images State
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string>('');
 
   useEffect(() => {
     if (paramValue) {
@@ -38,14 +42,33 @@ export default function ProductDetailPage() {
 
       const { data, error } = await query;
 
+      let foundProduct = null;
+
       if (error || !data || data.length === 0) {
         const { data: allProducts } = await supabase.from('products').select('*');
-        const found = allProducts?.find(
+        foundProduct = allProducts?.find(
           (p) => String(p.id) === paramValue || p.slug === paramValue
         );
-        setProduct(found || null);
       } else {
-        setProduct(data[0]);
+        foundProduct = data[0];
+      }
+
+      if (foundProduct) {
+        setProduct(foundProduct);
+
+        // Parse Multiple Image URLs (handles array, comma-separated string, or single string)
+        let extractedImages: string[] = [];
+
+        if (Array.isArray(foundProduct.image_urls) && foundProduct.image_urls.length > 0) {
+          extractedImages = foundProduct.image_urls;
+        } else if (foundProduct.image_url) {
+          extractedImages = foundProduct.image_url.split(',').map((img: string) => img.trim());
+        }
+
+        setImageUrls(extractedImages);
+        setSelectedImage(extractedImages[0] || '');
+      } else {
+        setProduct(null);
       }
     } catch (err) {
       console.error('Unexpected error:', err);
@@ -60,11 +83,13 @@ export default function ProductDetailPage() {
 
     // Get current cart items from LocalStorage
     const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
-    
+
     // Check if product with same ID and Size already exists
     const existingIndex = existingCart.findIndex(
       (item: any) => item.id === product.id && item.size === selectedSize
     );
+
+    const mainThumbImage = imageUrls[0] || product.image_url || '';
 
     if (existingIndex > -1) {
       existingCart[existingIndex].quantity += quantity;
@@ -73,7 +98,7 @@ export default function ProductDetailPage() {
         id: product.id,
         title: product.title,
         price: product.price,
-        image_url: product.image_url,
+        image_url: mainThumbImage,
         size: selectedSize,
         quantity: quantity,
       });
@@ -81,7 +106,7 @@ export default function ProductDetailPage() {
 
     // Save back to LocalStorage
     localStorage.setItem('cart', JSON.stringify(existingCart));
-    
+
     // Dispatch custom event so Cart page detects update immediately
     window.dispatchEvent(new Event('cartUpdated'));
 
@@ -103,8 +128,8 @@ export default function ProductDetailPage() {
     return (
       <div className="min-h-screen bg-void flex flex-col items-center justify-center text-smoke font-mono gap-4">
         <p className="text-lg text-white">Product not found.</p>
-        <button 
-          onClick={() => router.back()} 
+        <button
+          onClick={() => router.back()}
           className="text-xs bg-panel border border-seam text-bone px-4 py-2 rounded uppercase hover:bg-seam"
         >
           Go Back
@@ -120,18 +145,46 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-void text-bone p-6 md:p-12">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
         
-        {/* Left Side: Product Image */}
-        <div className="relative aspect-square w-full bg-panel rounded-lg overflow-hidden border border-seam">
-          {product.image_url ? (
-            <Image
-              src={product.image_url}
-              alt={product.title}
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-smoke font-mono">
-              No Image Available
+        {/* Left Side: Product Gallery (Main Image + Thumbnails) */}
+        <div className="flex flex-col space-y-4">
+          <div className="relative aspect-square w-full bg-panel rounded-lg overflow-hidden border border-seam">
+            {selectedImage ? (
+              <Image
+                src={selectedImage}
+                alt={product.title}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-smoke font-mono">
+                No Image Available
+              </div>
+            )}
+          </div>
+
+          {/* 4 to 5 Thumbnail Image Selection Bar */}
+          {imageUrls.length > 1 && (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {imageUrls.map((url, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedImage(url)}
+                  className={`relative w-20 h-20 rounded-md overflow-hidden border-2 flex-shrink-0 transition-all ${
+                    selectedImage === url
+                      ? 'border-white opacity-100 scale-95'
+                      : 'border-seam opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <Image
+                    src={url}
+                    alt={`${product.title} view ${index + 1}`}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </button>
+              ))}
             </div>
           )}
         </div>
