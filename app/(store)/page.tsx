@@ -42,10 +42,16 @@ export default function HomePage() {
     setLoading(false);
   };
 
-  // Helper function to check valid image URLs
-  const isValidImageUrl = (url: string) => {
-    if (!url) return false;
-    return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/');
+  // Helper function: Multiple URLs (comma-separated or array) irundhalum 1st image URL-a extraction pannum
+  const getFirstImageUrl = (product: any) => {
+    if (Array.isArray(product?.image_urls) && product.image_urls.length > 0) {
+      return product.image_urls[0];
+    }
+    if (product?.image_url) {
+      const urls = product.image_url.split(',').map((url: string) => url.trim());
+      return urls[0] || '';
+    }
+    return '';
   };
 
   return (
@@ -95,47 +101,50 @@ export default function HomePage() {
           <div className="text-center text-smoke py-12">No products available yet.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="bg-panel border border-seam rounded-lg overflow-hidden group hover:border-bone transition flex flex-col justify-between"
-              >
-                <div>
-                  <div className="relative w-full h-64 bg-ink overflow-hidden">
-                    {isValidImageUrl(product.image_url) ? (
-                      <Image
-                        src={product.image_url}
-                        alt={product.title || 'Product Image'}
-                        fill
-                        className="object-cover group-hover:scale-105 transition duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-smoke text-xs p-4 text-center">
-                        No Valid Image
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <span className="text-[10px] uppercase tracking-widest text-smoke block mb-1">
-                      {product.category}
-                    </span>
-                    <h3 className="font-bold text-sm uppercase tracking-wide truncate">
-                      {product.title}
-                    </h3>
-                    <p className="text-sm font-semibold mt-2">₹{product.price}</p>
-                  </div>
-                </div>
+            {products.map((product) => {
+              const mainImg = getFirstImageUrl(product);
 
-                <div className="p-4 pt-0">
-                  <Link
-                    href={`/product/${product.slug || product.id}`}
-                    className="block text-center w-full bg-bone text-void font-bold py-2 rounded text-xs uppercase tracking-wider hover:bg-smoke transition"
-                  >
-                    View Details
-                  </Link>
+              return (
+                <div
+                  key={product.id}
+                  className="bg-panel border border-seam rounded-lg overflow-hidden group hover:border-bone transition flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="relative w-full h-64 bg-ink overflow-hidden">
+                      {mainImg ? (
+                        <img
+                          src={mainImg}
+                          alt={product.title || 'Product Image'}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-smoke text-xs p-4 text-center">
+                          No Valid Image
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <span className="text-[10px] uppercase tracking-widest text-smoke block mb-1">
+                        {product.category || 'TRACK PANT'}
+                      </span>
+                      <h3 className="font-bold text-sm uppercase tracking-wide truncate">
+                        {product.title}
+                      </h3>
+                      <p className="text-sm font-semibold mt-2">₹{product.price}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 pt-0">
+                    <Link
+                      href={`/product/${product.slug || product.id}`}
+                      className="block text-center w-full bg-bone text-void font-bold py-2 rounded text-xs uppercase tracking-wider hover:bg-smoke transition"
+                    >
+                      View Details
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
